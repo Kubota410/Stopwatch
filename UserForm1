@@ -1,0 +1,116 @@
+Option Explicit
+
+'VBAです。
+'//整数秒の計算は Now 関数、ミリ秒の計算は Timer 関数を用いている。違う関数使ってるから微妙にずれてる笑//
+
+Private Start_time As Date, Stop_time As Date, Interval As Date             'Now関数を用いて時分秒を計算するための変数
+Private StartTimer As String, StopTimer As String, IntervalTimer As String  'Timer 関数を用いてミリ秒を計算するための変数
+Private MiliKeisan As String                                                '同上
+Private Stop_Button As Boolean, Clear_Button As Boolean                     'boolean : ボタンを押してるか押してないかの判別に使う
+Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal ms As LongPtr)      'Sleep関数を利用するためのAPI宣言
+Private strMsec As String                                                   '最終的に表示するミリ秒（小数点以下二桁）
+
+
+'''スタートボタンを押した時'''
+Private Sub StartBtn_Click()
+    If Stop_Button = False Then Exit Sub    '既にスタートされている時、もう一度開始しないように
+    Stop_Button = False
+    
+    '//最初からやり直すか、途中から再開（継続）するか
+    If Clear_Button = True Then
+        Interval = "00:00:00"               'インターバルの初期化（時分秒用）
+        IntervalTimer = "00000.00"          'インターバルの初期化（ミリ秒用）
+        Start_time = Now()                  '現在時刻を取得(時分秒計算用)
+        StartTimer = Timer                  '時間の取得(ミリ秒計算用)
+    Else
+        Interval = Interval + Now() - Stop_time
+        IntervalTimer = IntervalTimer + Timer - StopTimer
+    End If
+    
+    '//ストップボタンが押される（ストップボタンが true になる）まで繰り返し表示する
+    Do Until Stop_Button
+        MiliKeisan = Timer - StartTimer - IntervalTimer     'この数値の小数点以下二桁を GetAddMilliSecondTime で取得してくる
+        Call GetAddMilliSecondTime
+        Label1.Caption = Format(Now() - Start_time - Interval, "hh:nn:ss") & "." & strMsec  '動いてる時の時間を表示
+        DoEvents                                            'ストップボタンが押されているか確認しに行く
+        Sleep 20                                            'CPU使用率を下げるために処理休止
+    Loop
+End Sub
+
+'''ストップボタンを押した時'''
+Private Sub StopBtn_Click()
+    If Stop_Button = True Then Exit Sub     '既にストップされている時、、もう一度ストップしないように
+    Stop_Button = True
+    Clear_Button = False
+    Stop_time = Now()                       '止めた時の時間を取得（時分秒計算用）
+    StopTimer = Timer                       '止めた時の時間を取得（ミリ秒計算用）
+    MiliKeisan = StopTimer - IntervalTimer - StartTimer
+    Call GetAddMilliSecondTime              '止めた時点でのミリ秒（小数点第二位まで）を取得
+    Label1.Caption = Format(Stop_time - Interval - Start_time, "hh:nn:ss") & "." & strMsec  '止めた時の時間を表示
+End Sub
+
+'''クリアボタンを押した時'''
+Private Sub CrearBtn_Click()
+    If Stop_Button = False Then Exit Sub    'スタートされている時、クリアできないように
+    Label1.Caption = "00:00:00" & "." & "00"
+    Stop_Button = True
+    Clear_Button = True
+End Sub
+
+''Timer 関数で取得した時刻から小数点第二位までを取り出す''
+Private Sub GetAddMilliSecondTime()
+    
+    Dim intMsecDecPoint As Integer  '小数点の位置
+    Dim intMsecLength   As Integer  'Timer関数で取得した文字数
+    
+    '//ストップされてない時の計算
+    If Stop_Button = False Then
+        intMsecDecPoint = InStr(MiliKeisan, ".")            '小数点の位置は何文字目？
+        intMsecLength = Len(MiliKeisan)                     '文字数いくつ？
+        
+        '//ミリ秒の取得(補正付き)
+        If intMsecDecPoint = 0 Then
+            strMsec = "00"                                  '小数点以下がない時、少数の中身は00とする
+        Else
+            strMsec = Mid(MiliKeisan, intMsecDecPoint + 1, 2) '少数点以下がある時、小数点から下2桁までを取得
+                                                                            '??? 時々表示がチカチカする原因はたぶんここ???
+                                                                            '??? 小数点第二位が0のとき、第二位が空欄になっているため、表示が一瞬ずれているんだと思う???
+            '//この If はなぜか通過しないから意味ないけど残しときます → Sleep の時間を少し長めにとって見かけ上解決済み
+            If Len(strMsec) = 1 Then                        '小数点以下が一桁しかない時、末尾に"0"を追加したい。
+                strMsec = strMsec & "0"
+                Debug.Print Len(strMsec), "一文字しかないよー止まれー！"
+                End
+            End If
+        End If
+        Debug.Print strMsec, "=strMsec (START)"             '動いてる時の処理をｲﾐﾃﾞｨｴｲﾄｳｨﾝﾄﾞｳで確認する
+    '//ストップしたときの計算
+    Else
+        intMsecDecPoint = InStr(MiliKeisan, ".")            '小数点の位置は何文字目？
+        intMsecLength = Len(MiliKeisan)                     '文字数いくつ？
+        
+        '//ミリ秒の取得(補正付き)
+        If intMsecDecPoint = 0 Then
+            strMsec = "00"
+        Else
+            strMsec = Mid(MiliKeisan, intMsecDecPoint + 1, 2) '少数点以下がある時、小数点から下2桁までを取得
+        End If
+        Debug.Print strMsec, "=strMsec (STOP)"              '止まった時の処理をｲﾐﾃﾞｨｴｲﾄｳｨﾝﾄﾞｳで確認する
+    End If
+
+End Sub
+
+
+'''Form1を表示したとき'''
+Private Sub UserForm_Initialize()
+    Label1.Caption = "00:00:00" & "." & "00"
+    Stop_Button = True
+    Clear_Button = True
+End Sub
+
+
+'''終了ボタンを押した時'''
+Private Sub FinishBtn_Click()
+    If Stop_Button = False Then Exit Sub                    'スタートされている時、終了できないように
+    End
+End Sub
+
