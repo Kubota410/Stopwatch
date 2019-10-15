@@ -1,7 +1,7 @@
 Option Explicit
 
 'VBAです。
-'//整数秒の計算は Now 関数、ミリ秒の計算は Timer 関数を用いている。違う関数使ってるから微妙にずれてる笑//
+'//整数秒の計算は Now 関数、ミリ秒の計算は Timer 関数を用いている。（よく見るとミリ秒以下がずれているのは、違う関数を使ってしまったためだと思われる。）
 
 Private Start_time As Date, Stop_time As Date, Interval As Date             'Now関数を用いて時分秒を計算するための変数
 Private StartTimer As String, StopTimer As String, IntervalTimer As String  'Timer 関数を用いてミリ秒を計算するための変数
